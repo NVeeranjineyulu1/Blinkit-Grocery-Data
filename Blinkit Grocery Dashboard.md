@@ -1,41 +1,22 @@
-# Blinkit-Grocery-Data
-Power BI dashboard analyzing Blinkit sales performance across outlets, locations, and product categories. Includes KPIs, sales trends, item analysis, and interactive filters to derive business insights and support data-driven decisions.
+-- 1. DATABASE SETUP
+-- Create the table structure to hold Blinkit data
+CREATE TABLE blinkit_data (
+    Item_Fat_Content VARCHAR(50),
+    Item_Identifier VARCHAR(50),
+    Item_Type VARCHAR(100),
+    Outlet_Establishment_Year INT,
+    Outlet_Identifier VARCHAR(50),
+    Outlet_Location_Type VARCHAR(50),
+    Outlet_Size VARCHAR(50),
+    Outlet_Type VARCHAR(100),
+    Item_Visibility DECIMAL(10,4),
+    Item_Weight DECIMAL(10,2),
+    Total_Sales DECIMAL(18,2),
+    Rating DECIMAL(3,1)
+);
 
-Blinkit Sales Performance Analysis (SQL)
-📌 Project Overview
-This project involves a comprehensive analysis of Blinkit's (formerly Grofers) sales data to extract actionable insights. Using SQL (T-SQL), I performed data cleaning, established key performance indicators (KPIs), and analyzed sales distribution across various parameters like outlet size, location, and item types.
-
-The primary goal was to transform raw data into a structured format that helps in understanding customer preferences and outlet performance.
-
-📊 Key Metrics & KPIs
-To measure the business health, the following KPIs were calculated:
-
-Total Sales: The overall revenue generated (expressed in millions).
-
-Average Sales: The mean revenue per order.
-
-Number of Items: Total count of unique products/orders in the system.
-
-Average Rating: Customer satisfaction score across all products.
-
-🛠️ Technical Stack
-Database: Microsoft SQL Server (T-SQL)
-
-Key SQL Concepts: * Data Cleaning (CASE, UPDATE)
-
-Aggregations (SUM, AVG, COUNT)
-
-Window Functions (OVER())
-
-Data Transformation (PIVOT, CAST)
-
-Conditional Formatting (ISNULL)
-
-📂 Project Structure
-1. Data Cleaning
-The initial dataset contained inconsistent labels for fat content (e.g., 'LF', 'low fat', and 'Low Fat'). Standardizing these was crucial for accurate reporting.
-
-SQL
+-- 2. DATA CLEANING
+-- Standardizing 'Item_Fat_Content' to ensure consistency
 UPDATE blinkit_data
 SET Item_Fat_Content = 
     CASE 
@@ -43,38 +24,84 @@ SET Item_Fat_Content =
         WHEN Item_Fat_Content = 'reg' THEN 'Regular'
         ELSE Item_Fat_Content
     END;
-2. Business Insights Extracted
-I developed several queries to answer specific business questions:
 
-Sales by Fat Content: Understanding if customers prefer Low Fat vs. Regular items.
+-- Verification Check
+SELECT DISTINCT Item_Fat_Content FROM blinkit_data;
 
-Outlet Performance by Size: Analyzing which outlet sizes (Small, Medium, High) contribute the most to the bottom line using Percentage of Sales window functions.
+---
 
-Location Analysis: Comparing sales across Tier 1, Tier 2, and Tier 3 cities.
+-- 3. KEY PERFORMANCE INDICATORS (KPIs)
 
-Pivot Analysis: A detailed matrix view of Fat Content performance across different outlet locations.
+-- Total Sales (in Millions)
+SELECT CAST(SUM(Total_Sales) / 1000000.0 AS DECIMAL(10,2)) AS Total_Sales_Million
+FROM blinkit_data;
 
-🚀 How to Use
-Clone the Repository:
+-- Average Sales per Item
+SELECT CAST(AVG(Total_Sales) AS INT) AS Avg_Sales
+FROM blinkit_data;
 
-Bash
-git clone https://github.com/your-username/blinkit-sql-analysis.git
-Import the Data: Use the provided .csv file (if applicable) and import it into your SQL Server instance as blinkit_data.
+-- Total Number of Items/Orders
+SELECT COUNT(*) AS No_of_Orders
+FROM blinkit_data;
 
-Run the Scripts: Execute the analysis_queries.sql file to see the results of the cleaning and KPI generation.
+-- Average Customer Rating
+SELECT CAST(AVG(Rating) AS DECIMAL(10,1)) AS Avg_Rating
+FROM blinkit_data;
 
-📈 Key Findings
-Standardization Impact: Cleaning the Item_Fat_Content reduced categorical noise by 40%, leading to more accurate group-by analysis.
+---
 
-Tier Performance: Tier 3 locations showed the highest volume of orders, while Tier 1 locations had the highest average order value.
+-- 4. BUSINESS INSIGHTS & AGGREGATIONS
 
-Outlet Size: Medium-sized outlets contribute the largest percentage to total sales.
+-- A. Sales Distribution by Fat Content
+SELECT Item_Fat_Content, CAST(SUM(Total_Sales) AS DECIMAL(10,2)) AS Total_Sales
+FROM blinkit_data
+GROUP BY Item_Fat_Content;
 
-📝 Author
-[Your Name]
+-- B. Top Selling Item Types
+SELECT Item_Type, CAST(SUM(Total_Sales) AS DECIMAL(10,2)) AS Total_Sales
+FROM blinkit_data
+GROUP BY Item_Type
+ORDER BY Total_Sales DESC;
 
-LinkedIn: [Your Link]
+-- C. Fat Content Analysis by Outlet Location (Pivoted)
+SELECT 
+    Outlet_Location_Type, 
+    ISNULL([Low Fat], 0) AS Low_Fat, 
+    ISNULL([Regular], 0) AS Regular
+FROM (
+    SELECT Outlet_Location_Type, Item_Fat_Content, CAST(SUM(Total_Sales) AS DECIMAL(10,2)) AS Total_Sales
+    FROM blinkit_data
+    GROUP BY Outlet_Location_Type, Item_Fat_Content
+) AS SourceTable
+PIVOT (
+    SUM(Total_Sales) 
+    FOR Item_Fat_Content IN ([Low Fat], [Regular])
+) AS PivotTable
+ORDER BY Outlet_Location_Type;
 
-Portfolio: [Your Link]
+-- D. Sales Growth by Outlet Establishment Year
+SELECT Outlet_Establishment_Year, CAST(SUM(Total_Sales) AS DECIMAL(10,2)) AS Total_Sales
+FROM blinkit_data
+GROUP BY Outlet_Establishment_Year
+ORDER BY Outlet_Establishment_Year;
 
-💡 Pro-Tips for your GitHub:
+-- E. Percentage Contribution of Sales by Outlet Size
+SELECT 
+    Outlet_Size, 
+    CAST(SUM(Total_Sales) AS DECIMAL(10,2)) AS Total_Sales,
+    CAST((SUM(Total_Sales) * 100.0 / SUM(SUM(Total_Sales)) OVER()) AS DECIMAL(10,2)) AS Sales_Percentage
+FROM blinkit_data
+GROUP BY Outlet_Size
+ORDER BY Total_Sales DESC;
+
+-- F. Comprehensive Metrics by Outlet Type
+SELECT 
+    Outlet_Type, 
+    CAST(SUM(Total_Sales) AS DECIMAL(10,2)) AS Total_Sales,
+    CAST(AVG(Total_Sales) AS DECIMAL(10,0)) AS Avg_Sales,
+    COUNT(*) AS No_Of_Items,
+    CAST(AVG(Rating) AS DECIMAL(10,2)) AS Avg_Rating,
+    CAST(AVG(Item_Visibility) AS DECIMAL(10,2)) AS Item_Visibility
+FROM blinkit_data
+GROUP BY Outlet_Type
+ORDER BY Total_Sales DESC;
