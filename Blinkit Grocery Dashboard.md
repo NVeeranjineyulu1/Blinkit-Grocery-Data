@@ -69,12 +69,3 @@ Standardization Impact: Cleaning the Item_Fat_Content reduced categorical noise 
 Tier Performance: Tier 3 locations showed the highest volume of orders, while Tier 1 locations had the highest average order value.
 
 Outlet Size: Medium-sized outlets contribute the largest percentage to total sales.
-
-📝 Author
-[Your Name]
-
-LinkedIn: [Your Link]
-
-Portfolio: [Your Link]
-
-💡 Pro-Tips for your GitHub:
